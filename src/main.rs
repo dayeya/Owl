@@ -84,6 +84,8 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
     Ok(false)
 }
 
+// TODO: Fix bug that makes the shell not delete chars from the end.
+
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
     let mut stdout: io::Stdout = io::stdout();
