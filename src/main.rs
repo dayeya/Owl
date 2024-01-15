@@ -50,53 +50,53 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     f.render_widget(shell, layout[1]);
 }
 
+fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
+    if let Event::Key(key) = event::read()? {
+        match owl_explorer.state {
+            OwlState::Ended => { return Ok(true); }
+            OwlState::Normal => match key.code {
+                    KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions,
+                    KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
+                    _ => {}, 
+            }
+            OwlState::OwlShell => {
+                    if key.kind == KeyEventKind::Press { 
+                        match key.code {
+                            KeyCode::Enter => {
+                                /*
+                                1. BackEnd: Get the shell command.
+                                2. Backend: Execute.
+                                3. FrontEnd: Execute.
+                                */
+                            },
+                            KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
+                            KeyCode::Backspace => owl_explorer.delete_from_shell(),
+                            KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
+                            KeyCode::Left => owl_explorer.move_cursor(CursorDirection::Left),
+                            KeyCode::Esc => owl_explorer.state = OwlState::Normal,
+                            _ => {},
+                        }
+                    }
+                },
+            OwlState::OwlOptions => todo!(),
+        }
+    }
+    Ok(false)
+}
+
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
+    let mut stdout: io::Stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let backend: CrosstermBackend<io::Stdout> = CrosstermBackend::new(stdout);
+    let mut terminal: Terminal<CrosstermBackend<io::Stdout>> = Terminal::new(backend)?;
 
     let mut should_quit: bool = false;
     let mut owl_explorer: Owl = Owl::new();
+
     while !should_quit {
         terminal.draw(|f: &mut Frame<'_>| user_interface(f, &mut owl_explorer))?;
-
-        // Handle user keyboard.
-        if let Event::Key(key) = event::read()? {
-            match owl_explorer.state {
-                OwlState::Ended => { should_quit = true }
-                OwlState::Normal => match key.code {
-                        KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions,
-                        KeyCode::Char(':') => {
-                            owl_explorer.state = OwlState::OwlShell;
-                            owl_explorer.append_to_shell(':');
-                        },
-                        _ => {}, 
-                }
-                OwlState::OwlShell => {
-                        if key.kind == KeyEventKind::Press { 
-                            match key.code {
-                                KeyCode::Enter => {
-                                    /*
-                                    1. BackEnd: Get the shell command.
-                                    2. Backend: Execute.
-                                    3. FrontEnd: Execute.
-                                    */
-                                },
-                                KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
-                                KeyCode::Backspace => owl_explorer.delete_from_shell(),
-                                KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
-                                KeyCode::Left => owl_explorer.move_cursor(CursorDirection::Left),
-                                KeyCode::Esc => owl_explorer.state = OwlState::Normal,
-                                _ => {},
-                            }
-                        }
-                    },
-                OwlState::OwlOptions => todo!(),
-            }
-        }
-        // should_quit = handle_events()?;
+        should_quit = handle_events(&mut owl_explorer).unwrap();
     }
 
     disable_raw_mode()?;

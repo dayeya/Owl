@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub enum OwlOption {
     Null, 
     Explore(String),
@@ -30,6 +31,7 @@ impl<'a> OwlOptions<'a> {
     }
 }
 
+#[allow(dead_code)]
 pub enum OwlState {
     Normal,
     Ended,
@@ -55,21 +57,22 @@ impl OwlShell {
     }
 
     fn delete(&mut self) {
-
-        if self.cursor_position <= 1 { return }
-
-        match self.input.pop() {
-            Some(_) => self.cursor_shift_left(),
-            _ => {}, 
+        if !self.cursor_position <= 1 {
+            match self.input.pop() {
+                Some(_) => self.cursor_shift_left(),
+                _ => {}, 
+            }
         }
     }
 
     fn cursor_shift_left(&mut self) {
-        self.cursor_position = self.cursor_position.saturating_sub(1);
+        let new_cursor_pos = self.cursor_position.saturating_sub(1);
+        self.cursor_position = new_cursor_pos.clamp(0, self.input.len());
     }
 
     fn cursor_shift_right(&mut self) {
-        self.cursor_position = self.cursor_position.saturating_add(1);
+        let new_cursor_pos = self.cursor_position.saturating_add(1);
+        self.cursor_position = new_cursor_pos.clamp(0, self.input.len());
     }
 }
 
