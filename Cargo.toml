@@ -1,5 +1,5 @@
 [package]
-name = "file_explorer"
+name = "owl-file-explorer"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,5 @@ edition = "2021"
 
 [dependencies]
 winsafe = { version = "0.0.19", features = ["kernel"] }
-tui = "0.19"
 crossterm = "0.27"
-unicode-width = "0.1.11"
+ratatui = "0.25.0"

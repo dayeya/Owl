@@ -1,94 +1,102 @@
+use std::io;
+use std::rc::Rc;
+
 #[allow(unused_imports)]
 use winsafe::prelude::*;
 
-#[allow(unused_imports)]
-use tui::{
-    Frame,
-    backend::{Backend, CrosstermBackend},
-    widgets::{Block, Borders, BorderType, Paragraph, Wrap},
-    layout::{Layout, Constraint, Direction, Alignment, Margin},
-    Terminal, text::{Spans, Span},
-    style::{Style, Color}
-};
-
-#[allow(unused_imports)]
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand
 };
 
-use std::io;
+use ratatui::{prelude::*, widgets::*, layout::Layout};
 
 mod explorer;
-use explorer::owl_explorer::Owl;
+use explorer::owl_explorer::{Owl, OwlState, CursorDirection};
 
+const SHELL_BACKGROUND: Color = Color::Rgb(53, 80, 112);
 const OWL_BACKGROUND: Color = Color::Rgb(77, 94, 114);
 const OWL_SECONDARY: Color = Color::Rgb(254, 250, 212);
 
-#[allow(dead_code)]
-enum State {
-    Normal,
-    OwlShell,
-}
 
-#[allow(dead_code)]
-enum OwlOptions {
-    Explore(String),    // Start exploring on cwd - :sc
-    Quit(String),       // Quit Owl - :end
-    DeleteFile(String), // Delete a file from current folder - :del
-    CopyFile(String),   // Copy a specific file to clipboard - :cp 
-    ShowFile(String)    // Show the file contents (based on supported formats) - :ben_dover
-}
-
-fn user_interface<B: Backend>(f: &mut Frame<B>, owl_explorer: &mut Owl) {
-    let size = f.size();
-    let text: Vec<Spans> = vec![
-        Spans::from(Span::styled("Owl file explorer, press o", Style::default().fg(OWL_SECONDARY))),
+fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
+    let size: Rect = f.size();
+    let text: Vec<Line> = vec![
+        Line::from(Span::styled("Owl file explorer, PRESS O", Style::default().fg(OWL_SECONDARY))),
     ];
 
-    let layout = Layout::default()
-                                .direction(Direction::Vertical)
-                                .constraints([Constraint::Percentage(100)].as_ref())
-                                .split(size);
+    let wrap_trim: Wrap = Wrap { trim: true };
+    let layout: Rc<[Rect]> = Layout::new(
+        Direction::Vertical, [Constraint::Percentage(98), Constraint::Percentage(2)], ).split(size);
+
     let home_style: Style = Style::default().fg(OWL_SECONDARY).bg(OWL_BACKGROUND);
     let home_block: Block<'_> = Block::default().borders(Borders::ALL);
     let home_page: Paragraph<'_> = Paragraph::new(text)
-                                            .block(home_block)
                                             .style(home_style)
+                                            .block(home_block)
                                             .alignment(Alignment::Center)
-                                            .wrap(Wrap { trim: true });
+                                            .wrap(wrap_trim);
 
-    if owl_explorer.inside_options {
-        // TODO: Display the options table.
-    }
-
-    if owl_explorer.inside_shell {
-        // TODO: Display the shell prompt.
-    }
+    let current_shell_input: &str = owl_explorer.shell.input.as_str();
+    let shell_style: Style = Style::default().fg(OWL_SECONDARY).bg(SHELL_BACKGROUND);
+    let shell_block: Block<'_> = Block::default();
+    let shell: Paragraph<'_> = Paragraph::new(current_shell_input)
+                                .style(shell_style)
+                                .block(shell_block)
+                                .wrap(wrap_trim);
 
     f.render_widget(home_page, layout[0]);
+    f.render_widget(shell, layout[1]);
 }
 
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    stdout.execute(EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    let mut should_quit: bool = false;
     let mut owl_explorer: Owl = Owl::new();
-    loop {
-        terminal.draw(|f| user_interface(f, &mut owl_explorer))?;
+    while !should_quit {
+        terminal.draw(|f: &mut Frame<'_>| user_interface(f, &mut owl_explorer))?;
 
         // Handle user keyboard.
         if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char('o') => owl_explorer.inside_options = true,
-                KeyCode::Char(':') => owl_explorer.inside_shell = true,
-                _ => {}, 
+            match owl_explorer.state {
+                OwlState::Ended => { should_quit = true }
+                OwlState::Normal => match key.code {
+                        KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions,
+                        KeyCode::Char(':') => {
+                            owl_explorer.state = OwlState::OwlShell;
+                            owl_explorer.append_to_shell(':');
+                        },
+                        _ => {}, 
+                }
+                OwlState::OwlShell => {
+                        if key.kind == KeyEventKind::Press { 
+                            match key.code {
+                                KeyCode::Enter => {
+                                    /*
+                                    1. BackEnd: Get the shell command.
+                                    2. Backend: Execute.
+                                    3. FrontEnd: Execute.
+                                    */
+                                },
+                                KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
+                                KeyCode::Backspace => owl_explorer.delete_from_shell(),
+                                KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
+                                KeyCode::Left => owl_explorer.move_cursor(CursorDirection::Left),
+                                KeyCode::Esc => owl_explorer.state = OwlState::Normal,
+                                _ => {},
+                            }
+                        }
+                    },
+                OwlState::OwlOptions => todo!(),
             }
         }
+        // should_quit = handle_events()?;
     }
 
     disable_raw_mode()?;
