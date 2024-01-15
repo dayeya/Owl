@@ -2,43 +2,26 @@
 use winsafe::prelude::*;
 
 #[allow(unused_imports)]
-use std::{
-    io, 
-    thread, 
-    time::Duration
-};
-
-#[allow(unused_imports)]
 use tui::{
-    Frame, 
+    Frame,
     backend::{Backend, CrosstermBackend},
-    widgets::{Block, Borders, BorderType},
-    layout::{
-        Layout, 
-        Constraint, 
-        Direction
-    },
-    Terminal, text::Span,
+    widgets::{Block, Borders, BorderType, Paragraph, Wrap},
+    layout::{Layout, Constraint, Direction, Alignment, Margin},
+    Terminal, text::{Spans, Span},
     style::{Style, Color}
 };
 
 #[allow(unused_imports)]
 use crossterm::{
-    event::{
-        self, 
-        DisableMouseCapture, 
-        EnableMouseCapture, 
-        Event, 
-        KeyCode
-    },
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
-    terminal::{
-        disable_raw_mode, 
-        enable_raw_mode, 
-        EnterAlternateScreen, 
-        LeaveAlternateScreen
-    }
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
 };
+
+use std::io;
+
+mod explorer;
+use explorer::owl_explorer::Owl;
 
 const OWL_BACKGROUND: Color = Color::Rgb(77, 94, 114);
 const OWL_SECONDARY: Color = Color::Rgb(254, 250, 212);
@@ -51,25 +34,40 @@ enum State {
 
 #[allow(dead_code)]
 enum OwlOptions {
-    Explore(String),// Start exploring on cwd - :sc
-    Quit(String),   // Quit Owl - :end
+    Explore(String),    // Start exploring on cwd - :sc
+    Quit(String),       // Quit Owl - :end
     DeleteFile(String), // Delete a file from current folder - :del
-    CopyFile(String), // Copy a specific file to clipboard - :cp 
-    ShowFile(String) // Show the file contents (based on supported formats) - :ben_dover
+    CopyFile(String),   // Copy a specific file to clipboard - :cp 
+    ShowFile(String)    // Show the file contents (based on supported formats) - :ben_dover
 }
 
-#[allow(dead_code)]
-struct Owl{
-    current_working_dir: String,
-}
-
-fn user_interface<B: Backend>(f: &mut Frame<B>) {
-    let title: Span = Span::styled("Owl file explorer", Style::default().fg(OWL_SECONDARY));
+fn user_interface<B: Backend>(f: &mut Frame<B>, owl_explorer: &mut Owl) {
     let size = f.size();
-    let block = Block::default()
-        .title(title)
-        .style(Style::default().bg(OWL_BACKGROUND));
-    f.render_widget(block, size);
+    let text: Vec<Spans> = vec![
+        Spans::from(Span::styled("Owl file explorer, press o", Style::default().fg(OWL_SECONDARY))),
+    ];
+
+    let layout = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints([Constraint::Percentage(100)].as_ref())
+                                .split(size);
+    let home_style: Style = Style::default().fg(OWL_SECONDARY).bg(OWL_BACKGROUND);
+    let home_block: Block<'_> = Block::default().borders(Borders::ALL);
+    let home_page: Paragraph<'_> = Paragraph::new(text)
+                                            .block(home_block)
+                                            .style(home_style)
+                                            .alignment(Alignment::Center)
+                                            .wrap(Wrap { trim: true });
+
+    if owl_explorer.inside_options {
+        // TODO: Display the options table.
+    }
+
+    if owl_explorer.inside_shell {
+        // TODO: Display the shell prompt.
+    }
+
+    f.render_widget(home_page, layout[0]);
 }
 
 fn main() -> Result<(), io::Error> {
@@ -79,17 +77,15 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    let mut owl_explorer: Owl = Owl::new();
     loop {
-        terminal.draw(|f| user_interface(f))?;
+        terminal.draw(|f| user_interface(f, &mut owl_explorer))?;
 
         // Handle user keyboard.
         if let Event::Key(key) = event::read()? {
             match key.code {
-                KeyCode::Char(':') => {
-                    // Open a shell prompt.
-                    
-                },
-                KeyCode::Char('q') => break,
+                KeyCode::Char('o') => owl_explorer.inside_options = true,
+                KeyCode::Char(':') => owl_explorer.inside_shell = true,
                 _ => {}, 
             }
         }
