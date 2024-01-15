@@ -43,10 +43,30 @@ use crossterm::{
 const OWL_BACKGROUND: Color = Color::Rgb(77, 94, 114);
 const OWL_SECONDARY: Color = Color::Rgb(254, 250, 212);
 
+#[allow(dead_code)]
+enum State {
+    Normal,
+    OwlShell,
+}
+
+#[allow(dead_code)]
+enum OwlOptions {
+    Explore(String),// Start exploring on cwd - :sc
+    Quit(String),   // Quit Owl - :end
+    DeleteFile(String), // Delete a file from current folder - :del
+    CopyFile(String), // Copy a specific file to clipboard - :cp 
+    ShowFile(String) // Show the file contents (based on supported formats) - :ben_dover
+}
+
+#[allow(dead_code)]
+struct Owl{
+    current_working_dir: String,
+}
+
 fn user_interface<B: Backend>(f: &mut Frame<B>) {
     let title: Span = Span::styled("Owl file explorer", Style::default().fg(OWL_SECONDARY));
     let size = f.size();
-    let block: Block<'_> = Block::default()
+    let block = Block::default()
         .title(title)
         .style(Style::default().bg(OWL_BACKGROUND));
     f.render_widget(block, size);
@@ -65,6 +85,10 @@ fn main() -> Result<(), io::Error> {
         // Handle user keyboard.
         if let Event::Key(key) = event::read()? {
             match key.code {
+                KeyCode::Char(':') => {
+                    // Open a shell prompt.
+                    
+                },
                 KeyCode::Char('q') => break,
                 _ => {}, 
             }
