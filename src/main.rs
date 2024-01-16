@@ -42,7 +42,7 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
                                             .alignment(Alignment::Center)
                                             .wrap(wrap_trim);
 
-    let current_state: String = owl_explorer.state.to_string();
+    let current_state: String = owl_explorer.get_state_desc().unwrap();
     let state_style: Style = Style::default().fg(OWL_BACKGROUND).bg(OWL_SECONDARY);
     let state_block: Block<'_> = Block::default();
     let state_frame: Paragraph<'_> = Paragraph::new(current_state)

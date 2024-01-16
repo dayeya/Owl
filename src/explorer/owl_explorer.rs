@@ -19,7 +19,7 @@ impl ToString for OwlState {
 pub struct OwlOptions<'a> {
     pub open: bool,
     pub current: u8,
-    pub items: [&'a str; 6]
+    pub items: [&'a str; 8]
 }
 
 impl<'a> OwlOptions<'a> {
@@ -28,12 +28,14 @@ impl<'a> OwlOptions<'a> {
             open: false,
             current: 0,
             items: [
-                ":exp starts exploring",
-                ":end quits from owl",
-                ":del delets a chosen file from cwd",
-                ":cpy copies a chosen file to clipboard",
-                ":opn opens the contents of a chosen file",
-                ":ser searchs for a given file :ser <file>"
+                ":end - quits from the application.",
+                ":exp - explore everything inside cwd.",
+                ":ser - searches for a given file inside cwd.",
+                ":scd - switches the cwd to the given directory.",
+                ":del - deletes a given file and moves it to recycle bin.",
+                ":cpy - copies a given file.",
+                ":opn - opens the contents of a given file.",
+                ":mov - moves the given file to a given path."
             ]
         }
     }
@@ -85,7 +87,7 @@ pub struct Owl<'a> {
     pub state: OwlState,
     pub shell: OwlShell, 
     pub options: OwlOptions<'a>,
-    // current_working_dir: String,
+    pub cwd: String,
 }
 
 impl<'a>  Owl<'a> {
@@ -94,6 +96,17 @@ impl<'a>  Owl<'a> {
             state: OwlState::Normal,
             shell: OwlShell::new(),
             options: OwlOptions::new(),
+            cwd: String::from("Home"),
+        }
+    }
+
+    pub fn get_state_desc(&mut self) -> Option<String> {
+        match self.state {
+            OwlState::Normal => {
+                let normal_state: String = self.state.to_string();
+                Some(format!("{normal_state} - {}", self.cwd))
+            },
+            _ => Some(self.state.to_string()),
         }
     }
 
