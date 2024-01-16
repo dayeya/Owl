@@ -39,6 +39,17 @@ pub enum OwlState {
     OwlOptions,
 }
 
+impl ToString for OwlState {
+    fn to_string(&self) -> String {
+        match self {
+            OwlState::Normal => String::from("Normal"),
+            OwlState::OwlShell => String::from("Shell"),
+            OwlState::OwlOptions => String::from("Options"),
+            OwlState::Ended => String::from("Ended"),
+        }
+    }
+}
+
 pub struct OwlShell {
     pub input: String,
     pub cursor_position: usize, 
@@ -105,6 +116,12 @@ impl<'a>  Owl<'a> {
     pub fn delete_from_shell(&mut self) {
         self.shell.delete();
     }
+
+    
+    pub fn reset_shell(&mut self) {
+        self.shell.input = ":".to_string();
+    }
+
 
     pub fn move_cursor(&mut self, direction: CursorDirection) {
         match direction {

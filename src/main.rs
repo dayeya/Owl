@@ -28,26 +28,39 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
 
     let wrap_trim: Wrap = Wrap { trim: true };
     let layout: Rc<[Rect]> = Layout::new(
-        Direction::Vertical, [Constraint::Percentage(98), Constraint::Percentage(2)], ).split(size);
+        Direction::Vertical, [
+            Constraint::Percentage(96), // Normal block
+            Constraint::Percentage(2),  // State block
+            Constraint::Percentage(2)  // Shell block
+        ], ).split(size);
 
     let home_style: Style = Style::default().fg(OWL_SECONDARY).bg(OWL_BACKGROUND);
-    let home_block: Block<'_> = Block::default().borders(Borders::ALL);
-    let home_page: Paragraph<'_> = Paragraph::new(text)
+    let home_block: Block<'_> = Block::default();
+    let home_frame: Paragraph<'_> = Paragraph::new(text)
                                             .style(home_style)
                                             .block(home_block)
                                             .alignment(Alignment::Center)
                                             .wrap(wrap_trim);
 
+    let current_state: String = owl_explorer.state.to_string();
+    let state_style: Style = Style::default().fg(OWL_BACKGROUND).bg(OWL_SECONDARY);
+    let state_block: Block<'_> = Block::default();
+    let state_frame: Paragraph<'_> = Paragraph::new(current_state)
+                                .style(state_style)
+                                .block(state_block)
+                                .wrap(wrap_trim);
+
     let current_shell_input: &str = owl_explorer.shell.input.as_str();
     let shell_style: Style = Style::default().fg(OWL_SECONDARY).bg(SHELL_BACKGROUND);
     let shell_block: Block<'_> = Block::default();
-    let shell: Paragraph<'_> = Paragraph::new(current_shell_input)
+    let shell_frame: Paragraph<'_> = Paragraph::new(current_shell_input)
                                 .style(shell_style)
                                 .block(shell_block)
                                 .wrap(wrap_trim);
 
-    f.render_widget(home_page, layout[0]);
-    f.render_widget(shell, layout[1]);
+    f.render_widget(home_frame, layout[0]);
+    f.render_widget(state_frame, layout[1]);
+    f.render_widget(shell_frame, layout[2]);
 }
 
 fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
@@ -60,24 +73,27 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
                     _ => {}, 
             }
             OwlState::OwlShell => {
-                    if key.kind == KeyEventKind::Press { 
-                        match key.code {
-                            KeyCode::Enter => {
-                                /*
-                                1. BackEnd: Get the shell command.
-                                2. Backend: Execute.
-                                3. FrontEnd: Execute.
-                                */
-                            },
-                            KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
-                            KeyCode::Backspace => owl_explorer.delete_from_shell(),
-                            KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
-                            KeyCode::Left => owl_explorer.move_cursor(CursorDirection::Left),
-                            KeyCode::Esc => owl_explorer.state = OwlState::Normal,
-                            _ => {},
-                        }
+                if key.kind == KeyEventKind::Press {
+                    match key.code {
+                        KeyCode::Enter => {
+                            /*
+                            1. BackEnd: Get the shell command.
+                            2. Backend: Execute.
+                            3. FrontEnd: Execute.
+                            */
+                        },
+                        KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
+                        KeyCode::Backspace => owl_explorer.delete_from_shell(),
+                        KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
+                        KeyCode::Left => owl_explorer.move_cursor(CursorDirection::Left),
+                        KeyCode::Esc => {
+                            owl_explorer.state = OwlState::Normal;
+                            owl_explorer.reset_shell();
+                        },
+                        _ => {},
                     }
-                },
+                }
+            },
             OwlState::OwlOptions => todo!(),
         }
     }
