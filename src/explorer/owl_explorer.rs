@@ -110,16 +110,20 @@ impl<'a>  Owl<'a> {
         self.shell.delete();
     }
 
-    
     pub fn reset_shell(&mut self) {
         self.shell.input = ":".to_string();
     }
-
 
     pub fn move_cursor(&mut self, direction: CursorDirection) {
         match direction {
             CursorDirection::Left => self.shell.cursor_shift_left(),
             CursorDirection::Right => self.shell.cursor_shift_right(),
+        }
+    }
+
+    pub fn execute_shell(&mut self) {
+        if self.shell.input == ":end" {
+            self.state = OwlState::Ended;
         }
     }
 }

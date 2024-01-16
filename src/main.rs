@@ -5,7 +5,7 @@ use std::rc::Rc;
 use winsafe::prelude::*;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand
 };
@@ -63,7 +63,7 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     f.render_widget(shell_frame, layout[2]);
 
     match owl_explorer.state {
-        OwlState::OwlOptions | OwlState::OwlShell => {
+        OwlState::OwlOptions => {
             let options_style: Style = Style::default().fg(Color::White);
             let options_block: Block<'_> = Block::default().title("OwlOptions").borders(Borders::ALL);
             let options = List::new(owl_explorer.options.items)
@@ -82,7 +82,9 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
 fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
     if let Event::Key(key) = event::read()? {
         match owl_explorer.state {
-            OwlState::Ended => { return Ok(true); }
+            OwlState::Ended => { 
+                return Ok(true) 
+            },
             OwlState::Normal => match key.code {
                     KeyCode::Char('o') => {
                         owl_explorer.state = OwlState::OwlOptions;
@@ -95,13 +97,7 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
             OwlState::OwlShell => {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Enter => {
-                            /*
-                            1. BackEnd: Get the shell command.
-                            2. Backend: Execute.
-                            3. FrontEnd: Execute.
-                            */
-                        },
+                        KeyCode::Enter => owl_explorer.execute_shell(),
                         KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
                         KeyCode::Backspace => owl_explorer.delete_from_shell(),
                         KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
@@ -145,7 +141,6 @@ fn main() -> Result<(), io::Error> {
     execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,
-        DisableMouseCapture
     )?;
     terminal.show_cursor()?;
 
