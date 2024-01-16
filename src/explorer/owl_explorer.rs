@@ -1,37 +1,3 @@
-#[allow(dead_code)]
-pub enum OwlOption {
-    Null, 
-    Explore(String),
-    Quit(String),
-    DeleteFile(String),
-    CopyFile(String),
-    ShowFile(String),
-    SearchFile(String),
-}
-
-pub struct OwlOptions<'a> {
-    pub current: OwlOption,
-    pub items: Vec<Vec<&'a str>>
-}
-
-impl<'a> OwlOptions<'a> {
-    pub fn new() -> OwlOptions<'a> {
-        OwlOptions {
-            current: OwlOption::Null,
-            items: vec![
-                vec![":", "opens shell prompt"],
-                vec![":exp", "starts exploring"],
-                vec![":end", "quits from owl"],
-                vec![":del", "delets a chosen file from cwd"],
-                vec![":cpy", "copies a chosen file to clipboard"],
-                vec![":opn", "opens the contents of a chosen file"],
-                vec![":ser", "searchs for a given file :ser <file>"]
-            ]
-        }
-    }
-}
-
-#[allow(dead_code)]
 pub enum OwlState {
     Normal,
     Ended,
@@ -46,6 +12,29 @@ impl ToString for OwlState {
             OwlState::OwlShell => String::from("Shell"),
             OwlState::OwlOptions => String::from("Options"),
             OwlState::Ended => String::from("Ended"),
+        }
+    }
+}
+
+pub struct OwlOptions<'a> {
+    pub open: bool,
+    pub current: u8,
+    pub items: [&'a str; 6]
+}
+
+impl<'a> OwlOptions<'a> {
+    pub fn new() -> OwlOptions<'a> {
+        OwlOptions {
+            open: false,
+            current: 0,
+            items: [
+                ":exp starts exploring",
+                ":end quits from owl",
+                ":del delets a chosen file from cwd",
+                ":cpy copies a chosen file to clipboard",
+                ":opn opens the contents of a chosen file",
+                ":ser searchs for a given file :ser <file>"
+            ]
         }
     }
 }
@@ -106,6 +95,10 @@ impl<'a>  Owl<'a> {
             shell: OwlShell::new(),
             options: OwlOptions::new(),
         }
+    }
+
+    pub fn set_options(&mut self) {
+        self.options.open = true;
     }
     
     pub fn append_to_shell(&mut self, pressed: char) {

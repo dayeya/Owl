@@ -61,17 +61,37 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     f.render_widget(home_frame, layout[0]);
     f.render_widget(state_frame, layout[1]);
     f.render_widget(shell_frame, layout[2]);
+
+    match owl_explorer.state {
+        OwlState::OwlOptions => {
+            let options_style: Style = Style::default().fg(Color::White);
+            let options_block: Block<'_> = Block::default().title("OwlOptions").borders(Borders::ALL);
+            let options = List::new(owl_explorer.options.items)
+                .block(options_block)
+                .style(options_style)
+                .highlight_symbol(">")
+                .repeat_highlight_symbol(true)
+                .direction(ListDirection::TopToBottom);
+    
+            f.render_widget(options, layout[0]);
+        },
+        _ => {},
+    }
 }
 
 fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
     if let Event::Key(key) = event::read()? {
         match owl_explorer.state {
             OwlState::Ended => { return Ok(true); }
-            OwlState::Normal => match key.code {
-                    KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions,
+            OwlState::Normal | OwlState::OwlOptions => match key.code {
+                    KeyCode::Char('o') => {
+                        owl_explorer.state = OwlState::OwlOptions;
+                        owl_explorer.set_options();
+                    },
                     KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
+                    KeyCode::Esc => owl_explorer.state = OwlState::Normal,
                     _ => {}, 
-            }
+            },
             OwlState::OwlShell => {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
@@ -94,7 +114,6 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
                     }
                 }
             },
-            OwlState::OwlOptions => todo!(),
         }
     }
     Ok(false)
