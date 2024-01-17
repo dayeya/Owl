@@ -47,8 +47,7 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     let state_block: Block<'_> = Block::default();
     let state_frame: Paragraph<'_> = Paragraph::new(current_state)
                                 .style(state_style)
-                                .block(state_block)
-                                .wrap(wrap_trim);
+                                .block(state_block);
 
     let current_shell_input: &str = owl_explorer.shell.input.as_str();
     let shell_style: Style = Style::default().fg(OWL_SECONDARY).bg(SHELL_BACKGROUND);
@@ -86,10 +85,7 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
                 return Ok(true) 
             },
             OwlState::Normal => match key.code {
-                    KeyCode::Char('o') => {
-                        owl_explorer.state = OwlState::OwlOptions;
-                        owl_explorer.set_options();
-                    },
+                    KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions, 
                     KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
                     KeyCode::Esc => owl_explorer.state = OwlState::Normal,
                     _ => {}, 

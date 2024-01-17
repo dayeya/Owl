@@ -1,11 +1,14 @@
 # Owl
 Owl is a minimalistic, simple and fast file explorer.
 
-# OwlShell
-Owl has its own shell and unique commands to interact with the file system.
-To get access to the shell press ```:```.
+# Normal mode
+The default mode of Owl, you can go back to normal mode by pressing the ```Escape``` key.
 
-## OwlCommands
+# Shell mode
+Owl has its own shell and unique commands to interact with the file system.
+You can gain access to the mode by typing ```:``` in normal mode.
+
+## Shell commands
 - :end - quits from the application.
 - :exp - explore everything inside cwd.
 - :ser - searches for a given file inside cwd.
@@ -23,7 +26,10 @@ To get access to the shell press ```:```.
 - :del [file_name.extension]
 - :cpy [file_name.extension]
 - :opn [file_name.extension]
-- :mov {file.extension}, [from], [to]
+- :mov [file.extension] [to]
+
+# Options mode
+TODO
 
 # Future-Ideas
 * Implement customization.

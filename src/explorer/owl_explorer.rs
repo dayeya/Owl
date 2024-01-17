@@ -96,22 +96,18 @@ impl<'a>  Owl<'a> {
             state: OwlState::Normal,
             shell: OwlShell::new(),
             options: OwlOptions::new(),
-            cwd: String::from("Home"),
+            cwd: String::from(r"C:\"),
         }
     }
 
     pub fn get_state_desc(&mut self) -> Option<String> {
         match self.state {
-            OwlState::Normal => {
+            OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                Some(format!("{normal_state} - {}", self.cwd))
+                Some(format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd, padding_level=1))
             },
             _ => Some(self.state.to_string()),
         }
-    }
-
-    pub fn set_options(&mut self) {
-        self.options.open = true;
     }
     
     pub fn append_to_shell(&mut self, pressed: char) {
