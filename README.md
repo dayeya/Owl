@@ -5,7 +5,7 @@ Owl is a minimalistic, simple and fast file explorer.
 The default mode of Owl, you can go back to normal mode by pressing the ```Escape``` key.
 
 # Shell mode
-Owl has its own shell and unique commands to interact with the file system.
+Owl has its own shell and unique commands to interact with the file system. <be>
 You can gain access to the mode by typing ```:``` in normal mode.
 
 ## Shell commands
