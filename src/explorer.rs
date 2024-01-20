@@ -20,27 +20,16 @@ impl ToString for OwlState {
     }
 }
 
-pub struct OwlOptions<'a> {
+pub struct OwlOptions {
     pub open: bool,
     pub current: u8,
-    pub items: [&'a str; 8]
 }
 
-impl<'a> OwlOptions<'a> {
-    pub fn new() -> OwlOptions<'a> {
+impl<'a> OwlOptions {
+    pub fn new() -> OwlOptions {
         OwlOptions {
             open: false,
             current: 0,
-            items: [
-                ":end - quits from the application.",
-                ":exp - explore everything inside cwd.",
-                ":ser - searches for a given file inside cwd.",
-                ":scd - switches the cwd to the given directory.",
-                ":del - deletes a given file and moves it to recycle bin.",
-                ":cpy - copies a given file.",
-                ":opn - opens the contents of a given file.",
-                ":mov - moves the given file to a given path."
-            ]
         }
     }
 }
@@ -82,15 +71,15 @@ impl OwlShell {
     }
 }
 
-pub struct Owl<'a> {
+pub struct Owl {
     pub state: OwlState,
     pub shell: OwlShell, 
-    pub options: OwlOptions<'a>,
+    pub options: OwlOptions,
     pub cwd: String,
 }
 
-impl<'a>  Owl<'a> {
-    pub fn new() -> BootResult<Owl<'a>> {
+impl Owl {
+    pub fn new() -> BootResult<Owl> {
         let cwd: String = match internal::home_drive() {
             Ok(drive) => drive,
             Err(e) => {return Err(BootError::DriveLoadingFailed(e)); }
@@ -106,13 +95,13 @@ impl<'a>  Owl<'a> {
         Ok(owl)
     }
 
-    pub fn get_state_desc(&mut self) -> Option<String> {
+    pub fn format_mode(&mut self) -> String {
         match self.state {
             OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                Some(format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd, padding_level=1))
+                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd, padding_level=1)
             },
-            _ => Some(self.state.to_string()),
+            _ => self.state.to_string(),
         }
     }
     

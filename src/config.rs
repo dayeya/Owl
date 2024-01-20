@@ -1,1 +1,0 @@
-// CONFIG FILE FOR OWL.
