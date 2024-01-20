@@ -1,3 +1,7 @@
+use crate::internal::{self, BootResult, BootError};
+
+pub enum CursorDirection {Right, Left}
+
 pub enum OwlState {
     Normal,
     Ended,
@@ -78,11 +82,6 @@ impl OwlShell {
     }
 }
 
-pub enum CursorDirection {
-    Right, 
-    Left
-}
-
 pub struct Owl<'a> {
     pub state: OwlState,
     pub shell: OwlShell, 
@@ -91,13 +90,20 @@ pub struct Owl<'a> {
 }
 
 impl<'a>  Owl<'a> {
-    pub fn new() -> Owl<'a> {
-        Owl {
+    pub fn new() -> BootResult<Owl<'a>> {
+        let cwd: String = match internal::home_drive() {
+            Ok(drive) => drive,
+            Err(e) => {return Err(BootError::DriveLoadingFailed(e)); }
+        };
+
+        let owl = Owl {
             state: OwlState::Normal,
             shell: OwlShell::new(),
             options: OwlOptions::new(),
-            cwd: String::from(r"C:\"),
-        }
+            cwd: cwd,
+        };
+
+        Ok(owl)
     }
 
     pub fn get_state_desc(&mut self) -> Option<String> {
@@ -133,6 +139,9 @@ impl<'a>  Owl<'a> {
     pub fn execute_shell(&mut self) {
         if self.shell.input == ":end" {
             self.state = OwlState::Ended;
+        }
+        if self.shell.input == ":exp" {
+            // TODO: explore all dirs of cwd.
         }
     }
 }

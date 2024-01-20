@@ -1,8 +1,10 @@
 # Owl
-Owl is a minimalistic, simple and fast file explorer.
+Owl is a minimalistic, simple and fast file explorer that aims to make file exploring fast, safe and easy.
+To achieve that Owl provides keyboard only TUI, a built-in shell and a built-in guide.
 
 # Normal mode
 The default mode of Owl, you can go back to normal mode by pressing the ```Escape``` key.
+The normal mode enables you to browse through files and open them by pressing the ```Enter``` key while hovering on the file.
 
 # Shell mode
 Owl has its own shell and unique commands to interact with the file system. <br />

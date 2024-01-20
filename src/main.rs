@@ -1,19 +1,16 @@
+mod explorer;
+mod internal;
+
 use std::io;
 use std::rc::Rc;
-
-#[allow(unused_imports)]
-use winsafe::prelude::*;
-
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand
+    ExecutableCommand,
+    event::{self, Event, KeyCode, KeyEventKind},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, 
 };
-
 use ratatui::{prelude::*, widgets::*, layout::Layout};
-
-mod explorer;
-use explorer::owl_explorer::{Owl, OwlState, CursorDirection};
+use explorer::{Owl, OwlState, CursorDirection};
 
 const SHELL_BACKGROUND: Color = Color::Rgb(53, 80, 112);
 const OWL_BACKGROUND: Color = Color::Rgb(77, 94, 114);
@@ -31,7 +28,7 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
         Direction::Vertical, [
             Constraint::Percentage(96), // Normal block
             Constraint::Percentage(2),  // State block
-            Constraint::Percentage(2)  // Shell block
+            Constraint::Percentage(2)   // Shell block
         ], ).split(size);
 
     let home_style: Style = Style::default().fg(OWL_SECONDARY).bg(OWL_BACKGROUND);
@@ -126,7 +123,7 @@ fn main() -> Result<(), io::Error> {
     let mut terminal: Terminal<CrosstermBackend<io::Stdout>> = Terminal::new(backend)?;
 
     let mut should_quit: bool = false;
-    let mut owl_explorer: Owl = Owl::new();
+    let mut owl_explorer: Owl = Owl::new().unwrap(); // TODO: HANDLE DRIVELOADINGERROR.
 
     while !should_quit {
         terminal.draw(|f: &mut Frame<'_>| user_interface(f, &mut owl_explorer))?;
