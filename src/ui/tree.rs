@@ -30,10 +30,10 @@ impl<'a> UiTree<'a> {
         let title = (&self).title.to_owned();
         let headers = (&self).headers.to_owned();
         let widths = [
-            Constraint::Length(10), 
+            Constraint::Length(25), 
             Constraint::Length(20), 
-            Constraint::Length(5), 
-            Constraint::Length(5)
+            Constraint::Length(10), 
+            Constraint::Length(10)
         ];
         let tree_style = Style::default().fg(OWL_FONT_COLOR).bg(OWL_BACKGROUND);
         let tree = Table::new(items, widths)

@@ -98,7 +98,7 @@ impl Node {
                     md.len(),
                     md.is_file(),
                     md.is_dir(),
-                    path.extension().unwrap_or_default().to_string_lossy().to_string(),
+                    path.extension().unwrap_or(OsStr::new("Folder")).to_string_lossy().to_string(),
                     human_time(md.created()),
                     human_time(md.accessed()),
                     human_time(md.modified()),
