@@ -31,7 +31,7 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     let mode_bar: ModeBar = ModeBar::with_text(owl_explorer.format_mode());
     let shell_input: String = (&owl_explorer.shell.input).to_owned();
     let shell: Shell = Shell::with_text(shell_input);
-    let options = Options::with_items(40, 25, layout[0], String::from("Options"));
+    let options = Options::with_items(40, 27, layout[0], String::from("Options"));
 
     f.render_widget(content.inner, layout[0]);
     f.render_widget(mode_bar.inner, layout[1]);
@@ -55,7 +55,8 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
             OwlState::Normal => match key.code {
                     KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions, 
                     KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
-                    KeyCode::Esc => owl_explorer.state = OwlState::Normal,
+                    KeyCode::Char('f') => {}, // TODO: Move into previous cwd [inner].
+                    KeyCode::Char('g') => {}, // TODO: Move into previous cwd [outer].
                     _ => {}, 
             },
             OwlState::OwlShell => {
@@ -85,6 +86,7 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
 }
 
 // TODO: define UI constants in a more convenient way.
+// TODO: Make options height fit the actual content.
 
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;

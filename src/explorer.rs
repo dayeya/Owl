@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::path::PathBuf;
+use bplustree::{BPlusTree, GenericBPlusTree};
 use crate::internal::{self, BootResult, BootError};
 
 pub enum CursorDirection {Right, Left}
@@ -75,15 +78,26 @@ pub struct Owl {
     pub state: OwlState,
     pub shell: OwlShell, 
     pub options: OwlOptions,
-    pub cwd: String,
+    pub cwd: Arc<PathBuf>,
 }
 
 impl Owl {
     pub fn new() -> BootResult<Owl> {
-        let cwd: String = match internal::home_drive() {
-            Ok(drive) => drive,
-            Err(e) => {return Err(BootError::DriveLoadingFailed(e)); }
-        };
+        let drives: Arc<Vec<PathBuf>> = Arc::new(
+            match internal::drives() {
+                Ok(drives) => drives,
+                Err(e) => { return Err(BootError::DriveLoadingFailed(e)); }
+            }
+        );
+
+        let cwd: Arc<PathBuf> = Arc::new(PathBuf::from(
+            match internal::home_drive() {
+                Ok(drive) => drive,
+                Err(e) => { 
+                    return Err(BootError::DriveLoadingFailed(e));
+                }
+            }
+        ));
 
         let owl = Owl {
             state: OwlState::Normal,
@@ -99,15 +113,19 @@ impl Owl {
         match self.state {
             OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd, padding_level=1)
+                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=1)
             },
             _ => self.state.to_string(),
         }
     }
     
     pub fn append_to_shell(&mut self, pressed: char) {
-        self.shell.append(pressed);
-        self.shell.cursor_shift_right();
+        if pressed == ':' {
+            self.reset_shell();
+        } else { 
+            self.shell.append(pressed);
+            self.shell.cursor_shift_right();
+        }
     }
 
     pub fn delete_from_shell(&mut self) {
@@ -129,8 +147,11 @@ impl Owl {
         if self.shell.input == ":end" {
             self.state = OwlState::Ended;
         }
-        if self.shell.input == ":exp" {
+        else if self.shell.input == ":exp" {
             // TODO: explore all dirs of cwd.
         }
+        else {
+            self.shell.input = String::from("Unknown Command");
+        }   
     }
 }

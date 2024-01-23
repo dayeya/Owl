@@ -1,10 +1,16 @@
-use winsafe::{
-    self as w, co::{DRIVE, ERROR},
-    SysResult
-};
+// Amazing source: https://profpatsch.de/notes/rust-string-conversions.
+
+use std::fs;
+use std::io;
 use std::fmt;
-use std::path::Path;
+use std::fs::Permissions;
+use std::sync::Arc;
+use std::time::SystemTime;
+use std::path::PathBuf;
 use std::error::Error;
+use chrono::offset::Utc;
+use chrono::DateTime;
+use winsafe::{self as w, co::ERROR, SysResult};
 
 #[derive(Debug, Clone)]
 pub enum BootError {
@@ -18,7 +24,7 @@ impl fmt::Display for BootError {
         }
     }
 }
-
+ 
 impl Error for BootError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
@@ -27,53 +33,137 @@ impl Error for BootError {
     }
 }
 
-pub type BootResult<T> = Result<T, BootError>;
+pub struct FailedSysTime;
 
-pub struct DriveInfo {
-    root_path: Box<Path>,
-    drive_type: DRIVE,
-    space_info: String
+impl fmt::Display for FailedSysTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Failed to resolve systime.")
+    }
 }
 
-pub(crate) fn drives() -> SysResult<Vec<String>> {
+pub type BootResult<T> = Result<T, BootError>;
+
+pub(crate) fn drives() -> SysResult<Vec<PathBuf>> {
     if w::GetLogicalDrives() == 0 {
         return Err(w::GetLastError())
     }
-    w::GetLogicalDriveStrings()
+    let logical_drives: Vec<String> = w::GetLogicalDriveStrings()?;
+    Ok(logical_drives.into_iter().map(|p| PathBuf::from(p)).collect::<Vec<PathBuf>>())
 }
 
-pub(crate) fn home_drive() -> SysResult<String> {
+pub(crate) fn home_drive() -> SysResult<PathBuf> {
     // The current working directory of owl depends on the first driver.
     // Owl defines the first fetched driver as the `DEFUALT` one.
-    let available_drives: Vec<String> = drives()?;
-    let home_drive: &String = available_drives.first().unwrap();
+    let available_drives: Vec<PathBuf> = drives()?;
+    let home_drive: &PathBuf = available_drives.first().unwrap();
     Ok(home_drive.to_owned())
 }
 
-/*
-fn disk_space_info(root_path: Option<&str>) -> DiskSpaceInfo {
-    let mut free_bytes_available_to_calles: Option<&mut u64>;
-    let mut total_number_of_bytes: Option<&mut u64>;
-    let mut total_number_of_free_bytes :Option<&mut u64>;
-
-    w::GetDiskFreeSpaceEx(
-        root_path, 
-        free_bytes_available_to_calles,
-        total_number_of_bytes,
-        total_number_of_free_bytes
-    );
+pub(crate) fn human_time(sys_time: io::Result<SystemTime>) -> io::Result<String> {
+    let datetime: DateTime<Utc> = DateTime::from(sys_time?);
+    let formatted: String = format!("{}", datetime.format("%d/%m/%Y %H:%M"));
+    Ok(formatted)
 }
 
-pub(crate) fn get_driver_info() -> SysResult<Vec<DRIVE>> {
-    let available_drives: Vec<String> = drives()?;
-    available_drives.into_iter()
-    .map(|drive_path: String| {
-        let root_path: Box<String> = Box::new(drive_path);
-        let drive_type = w::GetDriveType(Some(&root_path));
-        DriveInfo::from(
-            root_path,
-            drive_type,
-            w::GetDiskFreeSpaceEx(&root_path)
-        )
-    });
-} */
+pub type DateModified = io::Result<SystemTime>;
+pub type DateAccessed = io::Result<SystemTime>;
+pub type DateCreation = io::Result<SystemTime>;
+
+pub struct Node {
+    pub root_path: Arc<PathBuf>,
+    pub size: u64,
+    pub is_file: bool,
+    pub is_dir: bool,
+    pub extension: String,
+    pub created: DateCreation,
+    pub accessed: DateAccessed,
+    pub modified: DateModified,
+    pub permissions: Option<Permissions>
+}
+
+impl Node {
+    pub fn from(path: Arc<PathBuf>) -> Self {
+        let (
+            size, 
+            is_file, 
+            is_dir, 
+            extension,
+            created, 
+            accessed, 
+            modified, 
+            permissions
+        ) = path.metadata()
+        .map(
+            |md| {
+                (
+                    md.len(),
+                    md.is_file(),
+                    md.is_dir(),
+                    path.extension().unwrap_or_default().to_string_lossy().to_string(),
+                    human_time(md.created()),
+                    human_time(md.accessed()),
+                    human_time(md.modified()),
+                    Some(md.permissions())
+                )
+            }
+        ).unwrap_or((0, false, false, "".to_string(), FailedSysTime, , , false));
+
+        Self {
+            root_path: path,
+            size: size,
+            is_file: is_file,
+            is_dir: is_dir,
+            extension: extension,
+            created: created,
+            accessed: accessed,
+            modified: modified,
+            permissions: permissions
+        }
+    }
+}
+
+pub struct Directory {
+    parent: Arc<PathBuf>,
+    nodes: Vec<Node>
+}
+
+impl Directory {
+    pub fn from(path: Arc<PathBuf>) -> Self {
+        let parent = path;
+        let nodes: Vec<Node> = fs::read_dir(path)?.map(
+            |rd| rd.map(|e| Node::from(Arc::new(e.path())))
+        ).collect::<Vec<Node>>();
+
+        Self {
+            parent: parent,
+            nodes: nodes,
+        }
+    }
+}
+
+// TODO: Get info of node.
+// TODO: Get info of drives.
+
+
+/*
+// File Access Rights - docs: https://learn.microsoft.com/en-us/windows/win32/fileio/file-access-rights-constants.
+pub enum FCR {
+    FileAddFile = 0x4,
+    FileAddSubdirectory = 0x4,
+    FileAllAccess, 
+    FileAppendData = 0x4,
+    FileCreatePipeInstance,
+    FileDeleteChild = 0x40,
+    FileExecute = 0x20,
+    FileListDirectory = 0x1,
+    FileReadAttributes = 0x80,
+    FileReadData = 0x1,
+    FileReadEa = 0x8,
+    FileTraverse = 0x20,
+    FileWriteAttributes = 0x100,
+    FileWriteData = 0x2,
+    FileWriteEa = 0x10,
+    StandardRightsRead,
+    StandardRightsWrite
+}
+*/
