@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::path::PathBuf;
-use ratatui::widgets::ListState;
 use crate::internal::{self, BootResult, BootError, Directory};
 
 pub enum CursorDirection {Right, Left}
@@ -113,7 +112,7 @@ impl Owl {
         match self.state {
             OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd, padding_level=1)
+                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=1)
             },
             _ => self.state.to_string(),
         }

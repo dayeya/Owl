@@ -1,11 +1,12 @@
 // Amazing source: https://profpatsch.de/notes/rust-string-conversions.
+
 use std::fs;
 use std::io;
 use std::fmt;
 use std::fs::Permissions;
 use std::sync::Arc;
 use std::time::SystemTime;
-use std::path::PathBuf;
+use std::path::{PathBuf, Display};
 use std::error::Error;
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -127,12 +128,6 @@ pub struct Directory {
     nodes: Vec<Node>
 }
 
-impl fmt::Display for Directory {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.parent)
-    }
-}
-
 impl Directory {
     pub fn from(path: Arc<PathBuf>) -> Self {
         let parent = path;
@@ -152,6 +147,10 @@ impl Directory {
         ).collect::<Vec<String>>();
 
         walked_node
+    }
+
+    pub fn display(&self) -> Display<'_> {
+        self.parent.display()
     }
 }
 

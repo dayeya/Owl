@@ -12,10 +12,12 @@ use crossterm::{
 };
 use ratatui::{prelude::*, widgets::*, layout::Layout};
 use explorer::{Owl, OwlState, CursorDirection};
+use ui::config::{OWL_BACKGROUND, OWL_FONT_COLOR};
 use crate::ui::content::Content;
 use crate::ui::mode_bar::ModeBar;
 use crate::ui::shell::Shell;
 use crate::ui::options::Options;
+use crate::ui::tree_item::list_item;
 
 
 fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
@@ -26,14 +28,20 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
             Constraint::Percentage(2),  // State block
             Constraint::Percentage(2)   // Shell block
         ], ).split(size);
-    
-    let content: Content = Content::with_text(None);
+
+    let second_layout: Rc<[Rect]> = Layout::new(
+        Direction::Horizontal, [
+            Constraint::Percentage(50), // Tree pane
+            Constraint::Percentage(50), // Preview pane
+        ], ).split(layout[0]);
+
+    let preview: Content = Content::with_text(Some("".to_string()), Borders::ALL);
     let mode_bar: ModeBar = ModeBar::with_text(owl_explorer.format_mode());
     let shell_input: String = (&owl_explorer.shell.input).to_owned();
     let shell: Shell = Shell::with_text(shell_input);
-    let options = Options::with_items(40, 27, layout[0], String::from("Options"));
+    let options: Options<'_> = Options::with_items(40, 27, layout[0], String::from("Options"));
 
-    f.render_widget(content.inner, layout[0]);
+    f.render_widget(preview.inner, second_layout[1]);
     f.render_widget(mode_bar.inner, layout[1]);
     f.render_widget(shell.inner, layout[2]);
 
@@ -45,20 +53,17 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
         _ => {},
     }
 
-    let cwd = owl_explorer.walk();
+    let cwd: Vec<String> = owl_explorer.walk();
     let cwd_entries: Vec<ListItem> = cwd.iter().map(
-        |path| ListItem::new(path.as_str()).style(Style::default().fg(Color::Black).bg(Color::White))
+        |path| list_item(path.as_str())
     ).collect();
 
-    let items = List::new(cwd_entries).block(Block::default().borders(Borders::ALL).title(format!("Walk through {}", owl_explorer.cwd.to_string())))
-    .highlight_style(
-        Style::default()
-            .bg(Color::LightGreen)
-            .add_modifier(Modifier::BOLD),
-    )
-    .highlight_symbol(">> ");
+    let items = List::new(cwd_entries)
+    .style(Style::default().fg(OWL_FONT_COLOR).bg(OWL_BACKGROUND))
+    .block(Block::default().borders(Borders::ALL)
+    .title(format!("Walk through {}", owl_explorer.cwd.display())));
 
-    f.render_widget(items, layout[0]);
+    f.render_widget(items, second_layout[0]);
 
 }
 
