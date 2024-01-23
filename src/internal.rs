@@ -1,5 +1,4 @@
 // Amazing source: https://profpatsch.de/notes/rust-string-conversions.
-
 use std::fs;
 use std::io;
 use std::fmt;
@@ -33,14 +32,6 @@ impl Error for BootError {
     }
 }
 
-pub struct FailedSysTime;
-
-impl fmt::Display for FailedSysTime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Failed to resolve systime.")
-    }
-}
-
 pub type BootResult<T> = Result<T, BootError>;
 
 pub(crate) fn drives() -> SysResult<Vec<PathBuf>> {
@@ -65,9 +56,9 @@ pub(crate) fn human_time(sys_time: io::Result<SystemTime>) -> io::Result<String>
     Ok(formatted)
 }
 
-pub type DateModified = io::Result<SystemTime>;
-pub type DateAccessed = io::Result<SystemTime>;
-pub type DateCreation = io::Result<SystemTime>;
+pub type DateModified = io::Result<String>;
+pub type DateAccessed = io::Result<String>;
+pub type DateCreation = io::Result<String>;
 
 pub struct Node {
     pub root_path: Arc<PathBuf>,
@@ -106,7 +97,16 @@ impl Node {
                     Some(md.permissions())
                 )
             }
-        ).unwrap_or((0, false, false, "".to_string(), FailedSysTime, , , false));
+        ).unwrap_or((
+            0, 
+            false, 
+            false, 
+            "".to_string(), 
+            Ok("Unresolveable".to_string()), 
+            Ok("Unresolveable".to_string()), 
+            Ok("Unresolveable".to_string()), 
+            None
+        ));
 
         Self {
             root_path: path,
@@ -127,17 +127,31 @@ pub struct Directory {
     nodes: Vec<Node>
 }
 
+impl fmt::Display for Directory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.parent)
+    }
+}
+
 impl Directory {
     pub fn from(path: Arc<PathBuf>) -> Self {
         let parent = path;
-        let nodes: Vec<Node> = fs::read_dir(path)?.map(
-            |rd| rd.map(|e| Node::from(Arc::new(e.path())))
-        ).collect::<Vec<Node>>();
-
+        let nodes: Vec<Node> = fs::read_dir(parent.as_ref()).unwrap().map(
+            |rd| rd.map(|e| Node::from(Arc::new(e.path()))).unwrap()
+        ).collect();
+        
         Self {
             parent: parent,
             nodes: nodes,
         }
+    }
+
+    pub fn walk(&mut self) -> Vec<String> {
+        let walked_node: Vec<String> = self.nodes.iter().map(
+            |n| n.root_path.to_string_lossy().to_string()
+        ).collect::<Vec<String>>();
+
+        walked_node
     }
 }
 

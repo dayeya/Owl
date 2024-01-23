@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::path::PathBuf;
-use bplustree::{BPlusTree, GenericBPlusTree};
-use crate::internal::{self, BootResult, BootError};
+use ratatui::widgets::ListState;
+use crate::internal::{self, BootResult, BootError, Directory};
 
 pub enum CursorDirection {Right, Left}
 
@@ -78,17 +78,17 @@ pub struct Owl {
     pub state: OwlState,
     pub shell: OwlShell, 
     pub options: OwlOptions,
-    pub cwd: Arc<PathBuf>,
+    pub cwd: Directory
 }
 
 impl Owl {
     pub fn new() -> BootResult<Owl> {
-        let drives: Arc<Vec<PathBuf>> = Arc::new(
+        let _drives: Arc<Vec<PathBuf>> = Arc::new(
             match internal::drives() {
                 Ok(drives) => drives,
                 Err(e) => { return Err(BootError::DriveLoadingFailed(e)); }
             }
-        );
+        ); 
 
         let cwd: Arc<PathBuf> = Arc::new(PathBuf::from(
             match internal::home_drive() {
@@ -103,7 +103,7 @@ impl Owl {
             state: OwlState::Normal,
             shell: OwlShell::new(),
             options: OwlOptions::new(),
-            cwd: cwd,
+            cwd: Directory::from(cwd),
         };
 
         Ok(owl)
@@ -113,7 +113,7 @@ impl Owl {
         match self.state {
             OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=1)
+                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd, padding_level=1)
             },
             _ => self.state.to_string(),
         }
@@ -153,5 +153,10 @@ impl Owl {
         else {
             self.shell.input = String::from("Unknown Command");
         }   
+    }
+
+    // Displays all contents of cwd.
+    pub fn walk(&mut self) -> Vec<String> {
+        self.cwd.walk()
     }
 }

@@ -44,6 +44,22 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
         },
         _ => {},
     }
+
+    let cwd = owl_explorer.walk();
+    let cwd_entries: Vec<ListItem> = cwd.iter().map(
+        |path| ListItem::new(path.as_str()).style(Style::default().fg(Color::Black).bg(Color::White))
+    ).collect();
+
+    let items = List::new(cwd_entries).block(Block::default().borders(Borders::ALL).title(format!("Walk through {}", owl_explorer.cwd.to_string())))
+    .highlight_style(
+        Style::default()
+            .bg(Color::LightGreen)
+            .add_modifier(Modifier::BOLD),
+    )
+    .highlight_symbol(">> ");
+
+    f.render_widget(items, layout[0]);
+
 }
 
 fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
