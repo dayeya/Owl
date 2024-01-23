@@ -42,10 +42,9 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
 
     let cwd: Vec<[String; 4]> = owl_explorer.walk();
     let tree_title: String = format!("Walk through {}", owl_explorer.cwd.display());
-    let items = UiTree::new(tree_title, cwd);
+    let mut ui_tree = UiTree::new(tree_title, cwd);
 
-    f.render_widget(items.render(), second_layout[0]);
-    
+    f.render_stateful_widget(ui_tree.render(), second_layout[0], &mut ui_tree.state);
     f.render_widget(preview.inner, second_layout[1]);
     f.render_widget(mode_bar.inner, layout[1]);
     f.render_widget(shell.inner, layout[2]);
@@ -69,6 +68,8 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
             OwlState::Normal => match key.code {
                     KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions, 
                     KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
+                    KeyCode::Char('j') | KeyCode::Up => {}, // TODO: Move into upper entry.
+                    KeyCode::Char('k') | KeyCode::Down => {}, // TODO: Move into lower entry.
                     KeyCode::Char('f') => {}, // TODO: Move into previous cwd [inner].
                     KeyCode::Char('g') => {}, // TODO: Move into previous cwd [outer].
                     _ => {}, 
