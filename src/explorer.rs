@@ -112,7 +112,7 @@ impl Owl {
         match self.state {
             OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=1)
+                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=0)
             },
             _ => self.state.to_string(),
         }
@@ -155,7 +155,7 @@ impl Owl {
     }
 
     // Displays all contents of cwd.
-    pub fn walk(&mut self) -> Vec<String> {
+    pub fn walk(&mut self) -> Vec<[String; 4]> {
         self.cwd.walk()
     }
 }

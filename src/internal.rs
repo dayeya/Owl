@@ -3,6 +3,7 @@
 use std::fs;
 use std::io;
 use std::fmt;
+use std::ffi::OsStr;
 use std::fs::Permissions;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -10,6 +11,7 @@ use std::path::{PathBuf, Display};
 use std::error::Error;
 use chrono::offset::Utc;
 use chrono::DateTime;
+use humansize::{make_format, DECIMAL};
 use winsafe::{self as w, co::ERROR, SysResult};
 
 #[derive(Debug, Clone)]
@@ -55,6 +57,11 @@ pub(crate) fn human_time(sys_time: io::Result<SystemTime>) -> io::Result<String>
     let datetime: DateTime<Utc> = DateTime::from(sys_time?);
     let formatted: String = format!("{}", datetime.format("%d/%m/%Y %H:%M"));
     Ok(formatted)
+}
+
+pub(crate) fn human_size(size: u64) -> String {
+    let formatter = make_format(DECIMAL);
+    formatter(size)
 }
 
 pub type DateModified = io::Result<String>;
@@ -121,6 +128,11 @@ impl Node {
             permissions: permissions
         }
     }
+
+    pub fn name(&self) -> &OsStr {
+        // Doesnt matter if 'Self' is a dir of a file.
+        self.root_path.file_name().unwrap_or(OsStr::new("").as_ref())
+    }
 }
 
 pub struct Directory {
@@ -141,12 +153,15 @@ impl Directory {
         }
     }
 
-    pub fn walk(&mut self) -> Vec<String> {
-        let walked_node: Vec<String> = self.nodes.iter().map(
-            |n| n.root_path.to_string_lossy().to_string()
-        ).collect::<Vec<String>>();
-
-        walked_node
+    pub fn walk(&mut self) -> Vec<[String; 4]> {
+        self.nodes.iter().map(
+            |n| [
+                n.name().to_string_lossy().to_string(), 
+                n.modified.as_ref().unwrap().to_owned(), 
+                n.extension.as_str().to_owned(), 
+                human_size(n.size)
+            ]
+        ).collect::<Vec<[String; 4]>>()
     }
 
     pub fn display(&self) -> Display<'_> {

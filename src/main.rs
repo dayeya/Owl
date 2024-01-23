@@ -12,12 +12,11 @@ use crossterm::{
 };
 use ratatui::{prelude::*, widgets::*, layout::Layout};
 use explorer::{Owl, OwlState, CursorDirection};
-use ui::config::{OWL_BACKGROUND, OWL_FONT_COLOR};
 use crate::ui::content::Content;
 use crate::ui::mode_bar::ModeBar;
 use crate::ui::shell::Shell;
 use crate::ui::options::Options;
-use crate::ui::tree_item::list_item;
+use crate::ui::tree::UiTree;
 
 
 fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
@@ -41,6 +40,12 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     let shell: Shell = Shell::with_text(shell_input);
     let options: Options<'_> = Options::with_items(40, 27, layout[0], String::from("Options"));
 
+    let cwd: Vec<[String; 4]> = owl_explorer.walk();
+    let tree_title: String = format!("Walk through {}", owl_explorer.cwd.display());
+    let items = UiTree::new(tree_title, cwd);
+
+    f.render_widget(items.render(), second_layout[0]);
+    
     f.render_widget(preview.inner, second_layout[1]);
     f.render_widget(mode_bar.inner, layout[1]);
     f.render_widget(shell.inner, layout[2]);
@@ -52,18 +57,6 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
         },
         _ => {},
     }
-
-    let cwd: Vec<String> = owl_explorer.walk();
-    let cwd_entries: Vec<ListItem> = cwd.iter().map(
-        |path| list_item(path.as_str())
-    ).collect();
-
-    let items = List::new(cwd_entries)
-    .style(Style::default().fg(OWL_FONT_COLOR).bg(OWL_BACKGROUND))
-    .block(Block::default().borders(Borders::ALL)
-    .title(format!("Walk through {}", owl_explorer.cwd.display())));
-
-    f.render_widget(items, second_layout[0]);
 
 }
 
