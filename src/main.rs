@@ -23,9 +23,9 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
     let size: Rect = f.size();
     let layout: Rc<[Rect]> = Layout::new(
         Direction::Vertical, [
-            Constraint::Percentage(96), // Normal block
-            Constraint::Percentage(2),  // State block
-            Constraint::Percentage(2)   // Shell block
+            Constraint::Max(98),    // Normal block
+            Constraint::Length(1),  // State block
+            Constraint::Length(1)   // Shell block
         ], ).split(size);
 
     let second_layout: Rc<[Rect]> = Layout::new(
