@@ -1,6 +1,9 @@
 use std::sync::Arc;
 use std::path::PathBuf;
-use crate::internal::{self, BootResult, BootError, Directory};
+use crate::{
+    internal::{self, BootResult, BootError, Directory}, 
+    ui::tree::UiTree
+};
 
 pub enum CursorDirection {Right, Left}
 
@@ -38,7 +41,7 @@ impl<'a> OwlOptions {
 
 pub struct OwlShell {
     pub input: String,
-    pub cursor_position: usize, 
+    pub cursor_position: usize,
 }
 
 impl OwlShell {
@@ -73,15 +76,16 @@ impl OwlShell {
     }
 }
 
-pub struct Owl {
+pub struct App<'a> {
     pub state: OwlState,
     pub shell: OwlShell, 
     pub options: OwlOptions,
-    pub cwd: Directory
+    pub cwd: Directory,
+    pub tree: UiTree<'a>
 }
 
-impl Owl {
-    pub fn new() -> BootResult<Owl> {
+impl<'a> App<'a> {
+    pub fn new() -> BootResult<App<'a>> {
         let _drives: Arc<Vec<PathBuf>> = Arc::new(
             match internal::drives() {
                 Ok(drives) => drives,
@@ -92,17 +96,20 @@ impl Owl {
         let cwd: Arc<PathBuf> = Arc::new(PathBuf::from(
             match internal::home_drive() {
                 Ok(drive) => drive,
-                Err(e) => { 
-                    return Err(BootError::DriveLoadingFailed(e));
-                }
+                Err(e) => { return Err(BootError::DriveLoadingFailed(e)); }
             }
         ));
 
-        let owl = Owl {
+        let mut cwd_buffer = Directory::from(cwd.clone());
+        let cwd_walked: Vec<[String; 4]> = cwd_buffer.walk();
+        let tree_title: String = format!("Walk through {}", cwd_buffer.display());
+
+        let owl = App {
             state: OwlState::Normal,
             shell: OwlShell::new(),
             options: OwlOptions::new(),
             cwd: Directory::from(cwd),
+            tree: UiTree::new(tree_title, cwd_walked),
         };
 
         Ok(owl)
@@ -112,10 +119,22 @@ impl Owl {
         match self.state {
             OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
                 let normal_state: String = self.state.to_string();
-                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=0)
+                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=1)
             },
             _ => self.state.to_string(),
         }
+    }
+    
+    pub fn execute_shell(&mut self) {
+        if self.shell.input == ":end" {
+            self.state = OwlState::Ended;
+        }
+        else if self.shell.input == ":exp" {
+            // TODO: explore all dirs of cwd.
+        }
+        else {
+            self.shell.input = String::from("Unknown Command");
+        }   
     }
     
     pub fn append_to_shell(&mut self, pressed: char) {
@@ -140,22 +159,5 @@ impl Owl {
             CursorDirection::Left => self.shell.cursor_shift_left(),
             CursorDirection::Right => self.shell.cursor_shift_right(),
         }
-    }
-
-    pub fn execute_shell(&mut self) {
-        if self.shell.input == ":end" {
-            self.state = OwlState::Ended;
-        }
-        else if self.shell.input == ":exp" {
-            // TODO: explore all dirs of cwd.
-        }
-        else {
-            self.shell.input = String::from("Unknown Command");
-        }   
-    }
-
-    // Displays all contents of cwd.
-    pub fn walk(&mut self) -> Vec<[String; 4]> {
-        self.cwd.walk()
     }
 }

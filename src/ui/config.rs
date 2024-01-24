@@ -1,7 +1,6 @@
 use ratatui::prelude::Color;
 
-pub const OWL_BACKGROUND: Color = Color::Rgb(77, 94, 114);
-pub const OWL_SECONDARY_BG: Color = Color::Rgb(53, 80, 112);
+pub const OWL_BACKGROUND: Color = Color::Rgb(23, 23, 23);
 pub const OWL_FONT_COLOR: Color = Color::Rgb(254, 250, 212);
 
 pub const OPTIONS: [&str; 8] = [

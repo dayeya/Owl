@@ -4,22 +4,21 @@ mod internal;
 
 use std::io;
 use std::rc::Rc;
+use ratatui::{prelude::*, widgets::*, layout::Layout};
 use crossterm::{
     execute,
     ExecutableCommand,
     event::{self, Event, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, 
 };
-use ratatui::{prelude::*, widgets::*, layout::Layout};
-use explorer::{Owl, OwlState, CursorDirection};
+
+use explorer::{App, OwlState, CursorDirection};
 use crate::ui::content::Content;
 use crate::ui::mode_bar::ModeBar;
 use crate::ui::shell::Shell;
 use crate::ui::options::Options;
-use crate::ui::tree::UiTree;
 
-
-fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
+fn user_interface(f: &mut Frame, explorer: &mut App) {
     let size: Rect = f.size();
     let layout: Rc<[Rect]> = Layout::new(
         Direction::Vertical, [
@@ -35,21 +34,18 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
         ], ).split(layout[0]);
 
     let preview: Content = Content::with_text(Some("".to_string()), Borders::ALL);
-    let mode_bar: ModeBar = ModeBar::with_text(owl_explorer.format_mode());
-    let shell_input: String = (&owl_explorer.shell.input).to_owned();
+    let mode_bar: ModeBar = ModeBar::with_text(explorer.format_mode());
+    let shell_input: String = (&explorer.shell.input).to_owned();
     let shell: Shell = Shell::with_text(shell_input);
     let options: Options<'_> = Options::with_items(40, 27, layout[0], String::from("Options"));
+    let ui_tree: Table<'_> = explorer.tree.render();
 
-    let cwd: Vec<[String; 4]> = owl_explorer.walk();
-    let tree_title: String = format!("Walk through {}", owl_explorer.cwd.display());
-    let mut ui_tree = UiTree::new(tree_title, cwd);
-
-    f.render_stateful_widget(ui_tree.render(), second_layout[0], &mut ui_tree.state);
+    f.render_stateful_widget(ui_tree, second_layout[0], &mut explorer.tree.state);
     f.render_widget(preview.inner, second_layout[1]);
     f.render_widget(mode_bar.inner, layout[1]);
     f.render_widget(shell.inner, layout[2]);
 
-    match owl_explorer.state {
+    match explorer.state {
         OwlState::OwlOptions => {
             f.render_widget(Clear, options.rect);
             f.render_widget(options.inner, options.rect);
@@ -59,17 +55,17 @@ fn user_interface(f: &mut Frame, owl_explorer: &mut Owl) {
 
 }
 
-fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
+fn handle_events(explorer: &mut App) -> Result<bool, io::Error> {
     if let Event::Key(key) = event::read()? {
-        match owl_explorer.state {
+        match explorer.state {
             OwlState::Ended => { 
                 return Ok(true) 
             },
             OwlState::Normal => match key.code {
-                    KeyCode::Char('o') => owl_explorer.state = OwlState::OwlOptions, 
-                    KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
-                    KeyCode::Char('j') | KeyCode::Up => {}, // TODO: Move into upper entry.
-                    KeyCode::Char('k') | KeyCode::Down => {}, // TODO: Move into lower entry.
+                    KeyCode::Char(':') => explorer.state = OwlState::OwlShell,
+                    KeyCode::Char('o') => explorer.state = OwlState::OwlOptions, 
+                    KeyCode::Char('j') => explorer.tree.move_previous(),
+                    KeyCode::Char('k') => explorer.tree.move_next(),
                     KeyCode::Char('f') => {}, // TODO: Move into previous cwd [inner].
                     KeyCode::Char('g') => {}, // TODO: Move into previous cwd [outer].
                     _ => {}, 
@@ -77,22 +73,22 @@ fn handle_events(owl_explorer: &mut Owl) -> Result<bool, io::Error> {
             OwlState::OwlShell => {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Enter => owl_explorer.execute_shell(),
-                        KeyCode::Char(pressed) => owl_explorer.append_to_shell(pressed), 
-                        KeyCode::Backspace => owl_explorer.delete_from_shell(),
-                        KeyCode::Right => owl_explorer.move_cursor(CursorDirection::Right),
-                        KeyCode::Left => owl_explorer.move_cursor(CursorDirection::Left),
+                        KeyCode::Enter => explorer.execute_shell(),
+                        KeyCode::Char(pressed) => explorer.append_to_shell(pressed), 
+                        KeyCode::Backspace => explorer.delete_from_shell(),
+                        KeyCode::Right => explorer.move_cursor(CursorDirection::Right),
+                        KeyCode::Left => explorer.move_cursor(CursorDirection::Left),
                         KeyCode::Esc => {
-                            owl_explorer.state = OwlState::Normal;
-                            owl_explorer.reset_shell();
+                            explorer.state = OwlState::Normal;
+                            explorer.reset_shell();
                         },
                         _ => {},
                     }
                 }
             },
             OwlState::OwlOptions => match key.code {
-                    KeyCode::Char(':') => owl_explorer.state = OwlState::OwlShell,
-                    KeyCode::Esc => owl_explorer.state = OwlState::Normal,
+                    KeyCode::Char(':') => explorer.state = OwlState::OwlShell,
+                    KeyCode::Esc => explorer.state = OwlState::Normal,
                     _ => {}, 
                 },
             }
@@ -111,11 +107,11 @@ fn main() -> Result<(), io::Error> {
     let mut terminal: Terminal<CrosstermBackend<io::Stdout>> = Terminal::new(backend)?;
 
     let mut should_quit: bool = false;
-    let mut owl_explorer: Owl = Owl::new().unwrap(); // TODO: HANDLE DRIVELOADINGERROR.
+    let mut explorer: App = App::new().unwrap(); // TODO: HANDLE DRIVELOADINGERROR.
 
     while !should_quit {
-        terminal.draw(|f: &mut Frame<'_>| user_interface(f, &mut owl_explorer))?;
-        should_quit = handle_events(&mut owl_explorer).unwrap();
+        terminal.draw(|f: &mut Frame<'_>| user_interface(f, &mut explorer))?;
+        should_quit = handle_events(&mut explorer).unwrap();
     }
 
     disable_raw_mode()?;
