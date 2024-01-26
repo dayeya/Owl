@@ -5,10 +5,10 @@ use std::io;
 use std::fmt;
 use std::ffi::OsStr;
 use std::fs::Permissions;
+use std::error::Error;
 use std::sync::Arc;
 use std::time::SystemTime;
 use std::path::{PathBuf, Display};
-use std::error::Error;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use humansize::{make_format, DECIMAL};
@@ -16,21 +16,24 @@ use winsafe::{self as w, co::ERROR, SysResult};
 
 #[derive(Debug, Clone)]
 pub enum BootError {
-    DriveLoadingFailed(ERROR)
+    DriveLoadingFailed(ERROR),
+    ConfigLoadingFailed
 }
 
 impl fmt::Display for BootError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            BootError::DriveLoadingFailed(e) => write!(f, "Drive loading failed due: {e}\nplease reload Owl."),
+        match self {
+            BootError::DriveLoadingFailed(e) => write!(f, "Drive loading failed, {e}"),
+            BootError::ConfigLoadingFailed => write!(f, "Config loading failed.")
         }
     }
 }
- 
+
 impl Error for BootError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
+        match self {
             BootError::DriveLoadingFailed(ref e) => Some(e),
+            BootError::ConfigLoadingFailed => None
         }
     }
 }
@@ -47,7 +50,7 @@ pub(crate) fn drives() -> SysResult<Vec<PathBuf>> {
 
 pub(crate) fn home_drive() -> SysResult<PathBuf> {
     // The current working directory of owl depends on the first driver.
-    // Owl defines the first fetched driver as the `DEFUALT` one.
+    // Owl defines the first fetched driver as the `DEFAULT` one.
     let available_drives: Vec<PathBuf> = drives()?;
     let home_drive: &PathBuf = available_drives.first().unwrap();
     Ok(home_drive.to_owned())
@@ -81,7 +84,7 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn from(path: Arc<PathBuf>) -> Self {
+    pub fn from(root_path: Arc<PathBuf>) -> Self {
         let (
             size, 
             is_file, 
@@ -91,14 +94,14 @@ impl Node {
             accessed, 
             modified, 
             permissions
-        ) = path.metadata()
+        ) = root_path.metadata()
         .map(
             |md| {
                 (
                     md.len(),
                     md.is_file(),
                     md.is_dir(),
-                    path.extension().unwrap_or(OsStr::new("Folder")).to_string_lossy().to_string(),
+                    root_path.extension().unwrap_or(OsStr::new("Folder")).to_string_lossy().to_string(),
                     human_time(md.created()),
                     human_time(md.accessed()),
                     human_time(md.modified()),
@@ -110,22 +113,22 @@ impl Node {
             false, 
             false, 
             "".to_string(), 
-            Ok("Unresolveable".to_string()), 
-            Ok("Unresolveable".to_string()), 
-            Ok("Unresolveable".to_string()), 
+            Ok("Unresolvable".to_string()),
+            Ok("Unresolvable".to_string()),
+            Ok("Unresolvable".to_string()),
             None
         ));
 
         Self {
-            root_path: path,
-            size: size,
-            is_file: is_file,
-            is_dir: is_dir,
-            extension: extension,
-            created: created,
-            accessed: accessed,
-            modified: modified,
-            permissions: permissions
+            root_path,
+            size,
+            is_file,
+            is_dir,
+            extension,
+            created,
+            accessed,
+            modified,
+            permissions
         }
     }
 
@@ -148,8 +151,8 @@ impl Directory {
         ).collect();
         
         Self {
-            parent: parent,
-            nodes: nodes,
+            parent,
+            nodes,
         }
     }
 

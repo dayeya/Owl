@@ -1,94 +1,56 @@
 mod ui;
-mod explorer;
+mod app;
+mod config;
 mod internal;
 
 use std::io;
-use std::rc::Rc;
-use ratatui::{prelude::*, widgets::*, layout::Layout};
+use ratatui::prelude::*;
 use crossterm::{
     execute,
     ExecutableCommand,
     event::{self, Event, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, 
 };
-
-use explorer::{App, OwlState, CursorDirection};
-use crate::ui::content::Content;
-use crate::ui::mode_bar::ModeBar;
-use crate::ui::shell::Shell;
-use crate::ui::options::Options;
-
-fn user_interface(f: &mut Frame, explorer: &mut App) {
-    let size: Rect = f.size();
-    let layout: Rc<[Rect]> = Layout::new(
-        Direction::Vertical, [
-            Constraint::Max(98),    // Normal block
-            Constraint::Length(1),  // State block
-            Constraint::Length(1)   // Shell block
-        ], ).split(size);
-
-    let second_layout: Rc<[Rect]> = Layout::new(
-        Direction::Horizontal, [
-            Constraint::Percentage(50), // Tree pane
-            Constraint::Percentage(50), // Preview pane
-        ], ).split(layout[0]);
-
-    let preview: Content = Content::with_text(Some("".to_string()), Borders::ALL);
-    let mode_bar: ModeBar = ModeBar::with_text(explorer.format_mode());
-    let shell_input: String = (&explorer.shell.input).to_owned();
-    let shell: Shell = Shell::with_text(shell_input);
-    let options: Options<'_> = Options::with_items(40, 27, layout[0], String::from("Options"));
-    let ui_tree: Table<'_> = explorer.tree.render();
-
-    f.render_stateful_widget(ui_tree, second_layout[0], &mut explorer.tree.state);
-    f.render_widget(preview.inner, second_layout[1]);
-    f.render_widget(mode_bar.inner, layout[1]);
-    f.render_widget(shell.inner, layout[2]);
-
-    match explorer.state {
-        OwlState::OwlOptions => {
-            f.render_widget(Clear, options.rect);
-            f.render_widget(options.inner, options.rect);
-        },
-        _ => {},
-    }
-
-}
+use app::{
+    App, 
+    Mode, 
+    CursorDirection
+};
 
 fn handle_events(explorer: &mut App) -> Result<bool, io::Error> {
     if let Event::Key(key) = event::read()? {
-        match explorer.state {
-            OwlState::Ended => { 
-                return Ok(true) 
+        match explorer.mode {
+            Mode::Ended => { 
+                return Ok(true)
             },
-            OwlState::Normal => match key.code {
-                    KeyCode::Char(':') => explorer.state = OwlState::OwlShell,
-                    KeyCode::Char('o') => explorer.state = OwlState::OwlOptions, 
-                    KeyCode::Char('j') => explorer.tree.move_previous(),
-                    KeyCode::Char('k') => explorer.tree.move_next(),
-                    KeyCode::Char('f') => {}, // TODO: Move into previous cwd [inner].
-                    KeyCode::Char('g') => {}, // TODO: Move into previous cwd [outer].
+            Mode::Normal => match key.code {
+                    KeyCode::Char(':') => explorer.mode = Mode::InsideShell,
+                    KeyCode::Char('o') => explorer.mode = Mode::InsideOptions,
+                    KeyCode::Char('f') => {},
+                    KeyCode::Char('g') => {},
+                    KeyCode::Char('j') => {}, // TODO: Display tree of selected child. [inner]
+                    KeyCode::Char('h') => {}, // TODO: Return back into parent. [outer]
                     _ => {}, 
             },
-            OwlState::OwlShell => {
+            Mode::InsideShell => {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
                         KeyCode::Enter => explorer.execute_shell(),
-                        KeyCode::Char(pressed) => explorer.append_to_shell(pressed), 
+                        KeyCode::Char(pressed) => explorer.append_to_shell(pressed),
                         KeyCode::Backspace => explorer.delete_from_shell(),
                         KeyCode::Right => explorer.move_cursor(CursorDirection::Right),
                         KeyCode::Left => explorer.move_cursor(CursorDirection::Left),
                         KeyCode::Esc => {
-                            explorer.state = OwlState::Normal;
+                            explorer.mode = Mode::Normal;
                             explorer.reset_shell();
                         },
                         _ => {},
                     }
                 }
             },
-            OwlState::OwlOptions => match key.code {
-                    KeyCode::Char(':') => explorer.state = OwlState::OwlShell,
-                    KeyCode::Esc => explorer.state = OwlState::Normal,
+            Mode::InsideOptions => match key.code {
+                    KeyCode::Char(':') => explorer.mode = Mode::InsideShell,
+                    KeyCode::Esc => explorer.mode = Mode::Normal,
                     _ => {}, 
                 },
             }
@@ -96,7 +58,7 @@ fn handle_events(explorer: &mut App) -> Result<bool, io::Error> {
     Ok(false)
 }
 
-// TODO: define UI constants in a more convenient way.
+// TODO: Config file.
 // TODO: Make options height fit the actual content.
 
 fn main() -> Result<(), io::Error> {
@@ -110,7 +72,7 @@ fn main() -> Result<(), io::Error> {
     let mut explorer: App = App::new().unwrap(); // TODO: HANDLE DRIVELOADINGERROR.
 
     while !should_quit {
-        terminal.draw(|f: &mut Frame<'_>| user_interface(f, &mut explorer))?;
+        terminal.draw(|f: &mut Frame<'_>| ui::user_interface(f, &mut explorer))?;
         should_quit = handle_events(&mut explorer).unwrap();
     }
 

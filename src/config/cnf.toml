@@ -1,0 +1,19 @@
+[color_schemes]
+bg = "23, 23, 23"
+fg = "254, 250, 212"
+
+[modes]
+normal = "NOR"
+shell = "SHL"
+options = "OPS"
+end = "END"
+
+[commands]
+end = "end"
+exp = "exp"
+ser = "ser"
+scd = "scd"
+del = "del"
+cpy = "cpy"
+opn = "opn"
+mov = "mov"

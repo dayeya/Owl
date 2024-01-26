@@ -1,52 +1,52 @@
+use std::fmt;
 use std::sync::Arc;
 use std::path::PathBuf;
-use crate::{
-    internal::{self, BootResult, BootError, Directory}, 
-    ui::tree::UiTree
-};
+use crate::{internal::{self, BootResult, BootError, Directory}};
+use crate::config::Config;
 
 pub enum CursorDirection {Right, Left}
 
-pub enum OwlState {
+pub enum Mode {
     Normal,
     Ended,
-    OwlShell,
-    OwlOptions,
+    InsideShell,
+    InsideOptions,
 }
 
-impl ToString for OwlState {
-    fn to_string(&self) -> String {
-        match self {
-            OwlState::Normal => String::from("Normal"),
-            OwlState::OwlShell => String::from("Shell"),
-            OwlState::OwlOptions => String::from("Options"),
-            OwlState::Ended => String::from("Ended"),
-        }
+impl fmt::Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            Mode::Normal => "NOR".to_string(),
+            Mode::InsideShell => "SHL".to_string().to_string(),
+            Mode::InsideOptions => "OPS".to_string(),
+            Mode::Ended => "END".to_string(),
+        };
+        write!(f, "{}", str)
     }
 }
 
-pub struct OwlOptions {
+pub struct AppOptions {
     pub open: bool,
     pub current: u8,
 }
 
-impl<'a> OwlOptions {
-    pub fn new() -> OwlOptions {
-        OwlOptions {
+impl<'a> AppOptions {
+    pub fn new() -> AppOptions {
+        AppOptions {
             open: false,
             current: 0,
         }
     }
 }
 
-pub struct OwlShell {
+pub struct AppShell {
     pub input: String,
     pub cursor_position: usize,
 }
 
-impl OwlShell {
-    fn new() -> OwlShell {
-        OwlShell {
+impl AppShell {
+    fn new() -> AppShell {
+        AppShell {
             input: ":".to_string(),
             cursor_position: 1,
         }
@@ -76,16 +76,18 @@ impl OwlShell {
     }
 }
 
-pub struct App<'a> {
-    pub state: OwlState,
-    pub shell: OwlShell, 
-    pub options: OwlOptions,
-    pub cwd: Directory,
-    pub tree: UiTree<'a>
+pub struct App {
+    pub config: Config,
+    pub mode: Mode,
+    pub shell: AppShell, 
+    pub options: AppOptions,
+    pub cwd: Directory
 }
 
-impl<'a> App<'a> {
-    pub fn new() -> BootResult<App<'a>> {
+impl App {
+    pub fn new() -> BootResult<Self> {
+        let cnf = Config::new().unwrap();
+
         let _drives: Arc<Vec<PathBuf>> = Arc::new(
             match internal::drives() {
                 Ok(drives) => drives,
@@ -100,34 +102,27 @@ impl<'a> App<'a> {
             }
         ));
 
-        let mut cwd_buffer = Directory::from(cwd.clone());
-        let cwd_walked: Vec<[String; 4]> = cwd_buffer.walk();
-        let tree_title: String = format!("Walk through {}", cwd_buffer.display());
-
-        let owl = App {
-            state: OwlState::Normal,
-            shell: OwlShell::new(),
-            options: OwlOptions::new(),
+        let app = Self {
+            config: cnf,
+            mode: Mode::Normal,
+            shell: AppShell::new(),
+            options: AppOptions::new(),
             cwd: Directory::from(cwd),
-            tree: UiTree::new(tree_title, cwd_walked),
         };
 
-        Ok(owl)
+        Ok(app)
     }
 
     pub fn format_mode(&mut self) -> String {
-        match self.state {
-            OwlState::Normal | OwlState::OwlShell | OwlState::OwlOptions => {
-                let normal_state: String = self.state.to_string();
-                format!("{:padding_level$}{normal_state} mode at {}", "", self.cwd.display(), padding_level=1)
-            },
-            _ => self.state.to_string(),
-        }
+        let app_mode: String = self.mode.to_string();
+        let formatted: String = format!("{:spacing_before$}{app_mode}{:spacing_between$}{}",
+                                        "", "", self.cwd.display(), spacing_before=1, spacing_between=3);
+        formatted
     }
     
     pub fn execute_shell(&mut self) {
         if self.shell.input == ":end" {
-            self.state = OwlState::Ended;
+            self.mode = Mode::Ended;
         }
         else if self.shell.input == ":exp" {
             // TODO: explore all dirs of cwd.
