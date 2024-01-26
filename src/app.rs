@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 use std::path::PathBuf;
-use crate::{internal::{self, BootResult, BootError, Directory}};
+use crate::internal::{self, BootResult, BootError, Directory};
 use crate::config::Config;
 
 pub enum CursorDirection {Right, Left}
@@ -81,7 +81,8 @@ pub struct App {
     pub mode: Mode,
     pub shell: AppShell, 
     pub options: AppOptions,
-    pub cwd: Directory
+    pub cwd: Directory,
+    pub selection_idx: Option<usize>
 }
 
 impl App {
@@ -108,6 +109,7 @@ impl App {
             shell: AppShell::new(),
             options: AppOptions::new(),
             cwd: Directory::from(cwd),
+            selection_idx: Some(0),
         };
 
         Ok(app)
@@ -154,5 +156,35 @@ impl App {
             CursorDirection::Left => self.shell.cursor_shift_left(),
             CursorDirection::Right => self.shell.cursor_shift_right(),
         }
+    }
+
+    pub fn shift_down(&mut self) {
+        let i = match self.selection_idx {
+            Some(k) => {
+                let dir = self.cwd.walk();
+                if k < dir.len() {
+                    k + 1
+                } else {
+                    0
+                }
+            }
+            None => 0
+        };
+        self.selection_idx = Some(i);
+    }
+
+    pub fn shift_up(&mut self) {
+        let i = match self.selection_idx {
+            Some(k) => {
+                if k > 0 {
+                    k - 1
+                } else {
+                    let dir = self.cwd.walk();
+                    dir.len() - 1
+                }
+            }
+            None => 0
+        };
+        self.selection_idx =  Some(i)
     }
 }

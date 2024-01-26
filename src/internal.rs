@@ -49,8 +49,6 @@ pub(crate) fn drives() -> SysResult<Vec<PathBuf>> {
 }
 
 pub(crate) fn home_drive() -> SysResult<PathBuf> {
-    // The current working directory of owl depends on the first driver.
-    // Owl defines the first fetched driver as the `DEFAULT` one.
     let available_drives: Vec<PathBuf> = drives()?;
     let home_drive: &PathBuf = available_drives.first().unwrap();
     Ok(home_drive.to_owned())
@@ -171,9 +169,6 @@ impl Directory {
         self.parent.display()
     }
 }
-
-// TODO: Get info of node.
-// TODO: Get info of drives.
 
 
 /*

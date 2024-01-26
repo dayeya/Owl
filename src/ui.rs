@@ -1,4 +1,5 @@
 use std::fmt;
+use std::num::ParseIntError;
 use std::rc::Rc;
 use ratatui::{prelude::*, widgets::*};
 use crate::app::{App, Mode};
@@ -24,14 +25,14 @@ impl fmt::Display for ParseError {
 
 fn parse_to_color(s: &String) -> Result<Color, ParseError> {
     let parts: Vec<&str> = s.split(",").collect();
-    let (r, g, b): (u8, u8, u8) = {
-        let parsed: Vec<u8> = parts.into_iter().map(|val| {
-            let trimmed = val.trim();
-            trimmed.parse().unwrap()
-        }).collect();
-        (parsed[0], parsed[1], parsed[2])
-    };
-    Ok(Color::Rgb(r, g, b))
+    if parts.len() != 3 {
+        return Err(ParseError::ParseColorError(s.to_string()));
+    }
+    let parsed: Result<Vec<u8>, ParseIntError> = parts.into_iter().map(|val| val.trim().parse::<u8>()).collect();
+    match parsed {
+        Ok(p) => Ok(Color::Rgb(p[0], p[1], p[2])),
+        Err(_) => return Err(ParseError::ParseColorError(s.to_string()))
+    }
 }
 
 impl ModeBar {
@@ -148,34 +149,6 @@ impl<'a> UiTree<'a> {
 
         tree
     }
-
-    pub fn move_next(&mut self) {
-        let i = match self.state.selected() {
-            Some(k) => {
-                if k < self.items.len() {
-                    k + 1
-                } else {
-                    0
-                }
-            }
-            None => 0
-        };
-        self.state.select(Some(i))
-    }
-
-    pub fn move_previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(k) => {
-                if k > 0 {
-                    k - 1
-                } else {
-                    self.items.len() - 1
-                }
-            }
-            None => 0
-        };
-        self.state.select(Some(i))
-    }
 }
 
 #[derive(Clone)]
@@ -272,8 +245,9 @@ fn draw_bars(f: &mut Frame, app: &mut App, area: &Rc<[Rect]>) {
 }
 
 fn draw_main(f: &mut Frame, app: &mut App, area: &Rc<[Rect]>) {
-    let mut main_view = FileSystemUi::new(&mut app.cwd, &app.config);
+    let main_view = FileSystemUi::new(&mut app.cwd, &app.config);
     let mut tree = main_view.tree;
+    tree.state.select(app.selection_idx);
     f.render_stateful_widget(tree.clone().render(), area[0], &mut tree.state);
     f.render_widget(main_view.preview, area[1]);
 }

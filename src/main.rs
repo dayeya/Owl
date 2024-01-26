@@ -26,8 +26,8 @@ fn handle_events(explorer: &mut App) -> Result<bool, io::Error> {
             Mode::Normal => match key.code {
                     KeyCode::Char(':') => explorer.mode = Mode::InsideShell,
                     KeyCode::Char('o') => explorer.mode = Mode::InsideOptions,
-                    KeyCode::Char('f') => {},
-                    KeyCode::Char('g') => {},
+                    KeyCode::Char('f') => explorer.shift_down(),
+                    KeyCode::Char('g') => explorer.shift_up(),
                     KeyCode::Char('j') => {}, // TODO: Display tree of selected child. [inner]
                     KeyCode::Char('h') => {}, // TODO: Return back into parent. [outer]
                     _ => {}, 
