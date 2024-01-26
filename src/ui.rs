@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 use ratatui::{prelude::*, widgets::*};
-use crate::app::App;
+use crate::app::{App, Mode};
 use crate::config::Config;
 use crate::internal::Directory;
 
@@ -48,7 +48,7 @@ impl ModeBar {
 }
 
 impl Shell {
-    pub fn new(input: String, conf: &Config) -> Paragraph  {
+    pub fn new(input: String, conf: &Config) -> Paragraph {
         let style: Style = Style::default()
             .fg(parse_to_color(&conf.color_schemes.fg).unwrap())
             .bg(parse_to_color(&conf.color_schemes.bg).unwrap());
@@ -61,6 +61,28 @@ impl Shell {
     }
 }
 
+impl Options {
+    pub fn new(title: String, conf: &Config) -> List {
+        let options_style: Style = Style::default()
+            .fg(parse_to_color(&conf.color_schemes.fg).unwrap())
+            .bg(parse_to_color(&conf.color_schemes.bg).unwrap());
+        let options_block: Block<'_> = Block::default()
+            .title(title)
+            .borders(Borders::ALL);
+
+        let items: Vec<ListItem> = (&conf.options.ops).into_iter().map(|op| {
+            ListItem::from(op.as_str())
+        }).collect();
+        let options: List<'_> = List::new(items)
+            .block(options_block)
+            .style(options_style)
+            .highlight_symbol(">")
+            .repeat_highlight_symbol(true)
+            .direction(ListDirection::TopToBottom);
+        options
+    }
+}
+
 pub struct UiTree<'a> {
     pub bg: Color,
     pub fg: Color,
@@ -69,6 +91,21 @@ pub struct UiTree<'a> {
     pub headers: Row<'a>,
     pub items: Vec<Row<'a>>,
     pub highlight_sym: &'a str,
+}
+
+impl<'a> Clone for UiTree<'a> {
+    fn clone(&self) -> Self {
+        Self {
+            bg: self.bg.clone(),
+            fg: self.fg.clone(),
+            title: self.title.clone(),
+            state: self.state.clone(),
+            headers: self.headers.clone(),
+            items: self.items.clone(),
+            highlight_sym: self.highlight_sym.clone(),
+
+        }
+    }
 }
 
 impl<'a> UiTree<'a> {
@@ -141,6 +178,7 @@ impl<'a> UiTree<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct FileSystemUi<'a> {
     pub tree: UiTree<'a>,
     pub preview: Paragraph<'a>
@@ -191,7 +229,7 @@ impl Layouts {
                         Constraint::Length(1)   // Shell block
                     ], ).split(parent);
                 Layouts::App {rects: application_layout}
-            }
+            },
             LayoutOps::View => {
                 let view_layout = Layout::new(
                     Direction::Horizontal, [
@@ -199,7 +237,7 @@ impl Layouts {
                         Constraint::Percentage(45), // Preview pane
                     ], ).split(parent);
                 Layouts::View {rects: view_layout}
-            }
+            },
             LayoutOps::Options(width, height) => {
                 let vertical_layout = Layout::new(
                     Direction::Vertical, [
@@ -226,28 +264,41 @@ impl Layouts {
     }
 }
 
-fn draw_main(f: &mut Frame, app: &mut App, area: &Rc<[Rect]>) {
-    let mut main_view = FileSystemUi::new(&mut app.cwd, &app.config);
+fn draw_bars(f: &mut Frame, app: &mut App, area: &Rc<[Rect]>) {
     let mode_bar = ModeBar::new(app.format_mode(), &app.config);
     let shell = Shell::new((&app.shell.input).to_owned(), &app.config);
-    f.render_widget(main_view.preview, area[0]);
     f.render_widget(mode_bar, area[1]);
-    f.render_widget(shell, area[2])
+    f.render_widget(shell, area[2]);
 }
 
-fn draw_layout(f: &mut Frame, app: &mut App, screen: Rect, layout: LayoutOps) {
-    match layout {
-        LayoutOps::App => {
-            let layout = Layouts::new(LayoutOps::App, screen);
-            draw_main(f, app, layout.rects())
-        },
-        _ => {},
-    }
+fn draw_main(f: &mut Frame, app: &mut App, area: &Rc<[Rect]>) {
+    let mut main_view = FileSystemUi::new(&mut app.cwd, &app.config);
+    let mut tree = main_view.tree;
+    f.render_stateful_widget(tree.clone().render(), area[0], &mut tree.state);
+    f.render_widget(main_view.preview, area[1]);
+}
+
+fn draw_options(f: &mut Frame, app: &mut App, area: &Rc<[Rect]>) {
+    let options_list = Options::new("Available cmds".to_string(), &app.config);
+    f.render_widget(options_list, area[1])
 }
 
 pub(crate) fn user_interface(f: &mut Frame, app: &mut App) {
     let screen: Rect = f.size();
-    draw_layout(f, app, screen, LayoutOps::App);
+    let root = Layouts::new(LayoutOps::App, screen);
+    let root_rects = root.rects();
+    let secondary_area = Layouts::new(LayoutOps::View, root_rects[0]);
+    let secondary_rects = secondary_area.rects();
+    let options_area = Layouts::new(LayoutOps::Options(40, 27), root_rects[0]);
+    let options_rects = options_area.rects();
+
+    // Draw all layouts.
+    draw_main(f, app, secondary_rects);
+    draw_bars(f, app, root_rects);
+    match app.mode {
+        Mode::InsideOptions => draw_options(f, app, options_rects),
+        _ => {}
+    }
 }
 
 /*

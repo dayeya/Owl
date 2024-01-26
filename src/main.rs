@@ -58,7 +58,6 @@ fn handle_events(explorer: &mut App) -> Result<bool, io::Error> {
     Ok(false)
 }
 
-// TODO: Config file.
 // TODO: Make options height fit the actual content.
 
 fn main() -> Result<(), io::Error> {
